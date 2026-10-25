@@ -1,0 +1,8 @@
+Origin: tibi1220
+Label: tibi1220's Repo
+Suite: stable
+Version: 1.0
+Codename: tibi1220
+Architectures: iphoneos-arm iphoneos-arm64 iphoneos-arm64e
+Components: main
+Description: Jailbreak tweaks by tibi1220

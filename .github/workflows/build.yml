@@ -1,0 +1,56 @@
+name: Build and deploy repo
+
+on:
+  push:
+    branches: [main]
+  # Sent by tweak repos after publishing a release
+  repository_dispatch:
+    types: [new-release]
+  workflow_dispatch:
+  schedule:
+    - cron: '17 3 * * *'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install tools
+        run: sudo apt-get update && sudo apt-get install -y dpkg-dev zstd
+
+      - name: Import signing key
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+        run: echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+
+      - name: Build
+        env:
+          GH_TOKEN: ${{ secrets.TWEAKS_READ_TOKEN || github.token }}
+          REQUIRE_SIGNING: 1
+        run: scripts/build.sh
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>tibi1220's Repo</title>
+    <link rel="icon" href="CydiaIcon.png" />
+    <link rel="apple-touch-icon" href="CydiaIcon.png" />
+    <style>
+      :root {
+        --bg: #f6f6f8;
+        --card: #ffffff;
+        --text: #16161a;
+        --muted: #6b6b76;
+        --border: #e2e2e8;
+        --accent: #5b5bd6;
+        --accent-text: #ffffff;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #111114;
+          --card: #1c1c21;
+          --text: #ececf1;
+          --muted: #9a9aa6;
+          --border: #2c2c33;
+          --accent: #8b8bf0;
+          --accent-text: #111114;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font:
+          16px/1.5 -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+      }
+      main {
+        max-width: 640px;
+        margin: 0 auto;
+        padding: 48px 16px;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 24px;
+      }
+      header img {
+        width: 64px;
+        height: 64px;
+        border-radius: 14px;
+      }
+      h1 {
+        font-size: 26px;
+        margin: 0;
+      }
+      .muted {
+        color: var(--muted);
+      }
+      .source {
+        font-family: ui-monospace, Menlo, monospace;
+        font-size: 14px;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 10px 12px;
+        overflow-wrap: anywhere;
+      }
+      .buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 12px 0 40px;
+      }
+      .buttons a {
+        background: var(--accent);
+        color: var(--accent-text);
+        text-decoration: none;
+        font-weight: 600;
+        padding: 8px 16px;
+        border-radius: 999px;
+      }
+      h2 {
+        font-size: 18px;
+        margin: 0 0 12px;
+      }
+      .pkg {
+        display: block;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 12px 16px;
+        margin-bottom: 8px;
+        color: inherit;
+        text-decoration: none;
+      }
+      .pkg .name {
+        font-weight: 600;
+      }
+      .pkg .meta {
+        font-size: 13px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <img src="CydiaIcon.png" alt="" />
+        <div>
+          <h1>tibi1220's Repo</h1>
+          <div class="muted">Jailbreak tweaks by tibi1220</div>
+        </div>
+      </header>
+
+      <div class="source" id="source"></div>
+      <div class="buttons">
+        <a id="sileo">Add to Sileo</a>
+        <a id="zebra">Add to Zebra</a>
+        <a id="cydia">Add to Cydia</a>
+      </div>
+
+      <h2>Packages</h2>
+      <div id="packages" class="muted">Loading…</div>
+    </main>
+
+    <script>
+      const base = new URL(".", location.href).href;
+      document.getElementById("source").textContent = base;
+      document.getElementById("sileo").href = "sileo://source/" + base;
+      document.getElementById("zebra").href = "zbra://sources/add/" + base;
+      document.getElementById("cydia").href =
+        "cydia://url/https://cydia.saurik.com/api/share#?source=" + base;
+
+      // Show the newest version of each package, with every architecture it ships for
+      fetch("Packages")
+        .then((r) => (r.ok ? r.text() : ""))
+        .then((text) => {
+          const pkgs = new Map();
+          for (const stanza of text.split(/\n\s*\n/)) {
+            const f = {};
+            for (const line of stanza.split("\n")) {
+              const m = line.match(/^([\w-]+):\s*(.*)$/);
+              if (m) f[m[1]] = m[2];
+            }
+            if (!f.Package) continue;
+            const p = pkgs.get(f.Package) || { ...f, archs: new Set() };
+            p.archs.add(f.Architecture);
+            if (
+              f.Version.localeCompare(p.Version, undefined, { numeric: true }) >
+              0
+            )
+              Object.assign(p, f);
+            pkgs.set(f.Package, p);
+          }
+
+          const list = document.getElementById("packages");
+          if (!pkgs.size) {
+            list.textContent = "Nothing published yet.";
+            return;
+          }
+          list.textContent = "";
+          list.classList.remove("muted");
+          for (const p of [...pkgs.values()].sort((a, b) =>
+            (a.Name || a.Package).localeCompare(b.Name || b.Package),
+          )) {
+            const el = document.createElement(p.Depiction ? "a" : "div");
+            el.className = "pkg";
+            if (p.Depiction) el.href = p.Depiction;
+            const name = document.createElement("div");
+            name.className = "name";
+            name.textContent = p.Name || p.Package;
+            const desc = document.createElement("div");
+            desc.textContent = p.Description || "";
+            const meta = document.createElement("div");
+            meta.className = "meta muted";
+            meta.textContent = `${p.Package} · ${p.Version} · ${[...p.archs].join(", ")}`;
+            el.append(name, desc, meta);
+            list.append(el);
+          }
+        });
+    </script>
+  </body>
+</html>
